@@ -23,6 +23,10 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+type contextKey string
+
+const userKey contextKey = "user"
+
 type MCPServerConfig struct {
 	// Version of the server
 	Version string

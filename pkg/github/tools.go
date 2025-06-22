@@ -3,6 +3,7 @@ package github
 import (
 	"context"
 
+	"github.com/github/github-mcp-server/pkg/monitoring"
 	"github.com/github/github-mcp-server/pkg/raw"
 	"github.com/github/github-mcp-server/pkg/toolsets"
 	"github.com/github/github-mcp-server/pkg/translations"
@@ -19,26 +20,34 @@ var DefaultTools = []string{"all"}
 func DefaultToolsetGroup(readOnly bool, getClient GetClientFn, getGQLClient GetGQLClientFn, getRawClient raw.GetRawClientFn, t translations.TranslationHelperFunc) *toolsets.ToolsetGroup {
 	tsg := toolsets.NewToolsetGroup(readOnly)
 
+	fetchUserDetails := func(ctx context.Context) (monitoring.UserDetails, error) {
+		details, err := FetchUserDetails(ctx, getClient)
+		if err != nil {
+			return monitoring.UserDetails{}, err
+		}
+		return monitoring.UserDetails(details), nil
+	}
+
 	// Define all available features with their default state (disabled)
 	// Create toolsets
 	repos := toolsets.NewToolset("repos", "GitHub Repository related tools").
 		AddReadTools(
-			toolsets.NewServerTool(SearchRepositories(getClient, t)),
-			toolsets.NewServerTool(GetFileContents(getClient, getRawClient, t)),
-			toolsets.NewServerTool(ListCommits(getClient, t)),
-			toolsets.NewServerTool(SearchCode(getClient, t)),
-			toolsets.NewServerTool(GetCommit(getClient, t)),
-			toolsets.NewServerTool(ListBranches(getClient, t)),
-			toolsets.NewServerTool(ListTags(getClient, t)),
-			toolsets.NewServerTool(GetTag(getClient, t)),
+			monitoring.WithMonitoring(toolsets.NewServerTool(SearchRepositories(getClient, t)), fetchUserDetails),
+			monitoring.WithMonitoring(toolsets.NewServerTool(GetFileContents(getClient, getRawClient, t)), fetchUserDetails),
+			monitoring.WithMonitoring(toolsets.NewServerTool(ListCommits(getClient, t)), fetchUserDetails),
+			monitoring.WithMonitoring(toolsets.NewServerTool(SearchCode(getClient, t)), fetchUserDetails),
+			monitoring.WithMonitoring(toolsets.NewServerTool(GetCommit(getClient, t)), fetchUserDetails),
+			monitoring.WithMonitoring(toolsets.NewServerTool(ListBranches(getClient, t)), fetchUserDetails),
+			monitoring.WithMonitoring(toolsets.NewServerTool(ListTags(getClient, t)), fetchUserDetails),
+			monitoring.WithMonitoring(toolsets.NewServerTool(GetTag(getClient, t)), fetchUserDetails),
 		).
 		AddWriteTools(
-			toolsets.NewServerTool(CreateOrUpdateFile(getClient, t)),
-			toolsets.NewServerTool(CreateRepository(getClient, t)),
-			toolsets.NewServerTool(ForkRepository(getClient, t)),
-			toolsets.NewServerTool(CreateBranch(getClient, t)),
-			toolsets.NewServerTool(PushFiles(getClient, t)),
-			toolsets.NewServerTool(DeleteFile(getClient, t)),
+			monitoring.WithMonitoring(toolsets.NewServerTool(CreateOrUpdateFile(getClient, t)), fetchUserDetails),
+			monitoring.WithMonitoring(toolsets.NewServerTool(CreateRepository(getClient, t)), fetchUserDetails),
+			monitoring.WithMonitoring(toolsets.NewServerTool(ForkRepository(getClient, t)), fetchUserDetails),
+			monitoring.WithMonitoring(toolsets.NewServerTool(CreateBranch(getClient, t)), fetchUserDetails),
+			monitoring.WithMonitoring(toolsets.NewServerTool(PushFiles(getClient, t)), fetchUserDetails),
+			monitoring.WithMonitoring(toolsets.NewServerTool(DeleteFile(getClient, t)), fetchUserDetails),
 		).
 		AddResourceTemplates(
 			toolsets.NewServerResourceTemplate(GetRepositoryResourceContent(getClient, getRawClient, t)),
@@ -49,86 +58,86 @@ func DefaultToolsetGroup(readOnly bool, getClient GetClientFn, getGQLClient GetG
 		)
 	issues := toolsets.NewToolset("issues", "GitHub Issues related tools").
 		AddReadTools(
-			toolsets.NewServerTool(GetIssue(getClient, t)),
-			toolsets.NewServerTool(SearchIssues(getClient, t)),
-			toolsets.NewServerTool(ListIssues(getClient, t)),
-			toolsets.NewServerTool(GetIssueComments(getClient, t)),
+			monitoring.WithMonitoring(toolsets.NewServerTool(GetIssue(getClient, t)), fetchUserDetails),
+			monitoring.WithMonitoring(toolsets.NewServerTool(SearchIssues(getClient, t)), fetchUserDetails),
+			monitoring.WithMonitoring(toolsets.NewServerTool(ListIssues(getClient, t)), fetchUserDetails),
+			monitoring.WithMonitoring(toolsets.NewServerTool(GetIssueComments(getClient, t)), fetchUserDetails),
 		).
 		AddWriteTools(
-			toolsets.NewServerTool(CreateIssue(getClient, t)),
-			toolsets.NewServerTool(AddIssueComment(getClient, t)),
-			toolsets.NewServerTool(UpdateIssue(getClient, t)),
-			toolsets.NewServerTool(AssignCopilotToIssue(getGQLClient, t)),
+			monitoring.WithMonitoring(toolsets.NewServerTool(CreateIssue(getClient, t)), fetchUserDetails),
+			monitoring.WithMonitoring(toolsets.NewServerTool(AddIssueComment(getClient, t)), fetchUserDetails),
+			monitoring.WithMonitoring(toolsets.NewServerTool(UpdateIssue(getClient, t)), fetchUserDetails),
+			monitoring.WithMonitoring(toolsets.NewServerTool(AssignCopilotToIssue(getGQLClient, t)), fetchUserDetails),
 		)
 	users := toolsets.NewToolset("users", "GitHub User related tools").
 		AddReadTools(
-			toolsets.NewServerTool(SearchUsers(getClient, t)),
+			monitoring.WithMonitoring(toolsets.NewServerTool(SearchUsers(getClient, t)), fetchUserDetails),
 		)
 	pullRequests := toolsets.NewToolset("pull_requests", "GitHub Pull Request related tools").
 		AddReadTools(
-			toolsets.NewServerTool(GetPullRequest(getClient, t)),
-			toolsets.NewServerTool(ListPullRequests(getClient, t)),
-			toolsets.NewServerTool(GetPullRequestFiles(getClient, t)),
-			toolsets.NewServerTool(GetPullRequestStatus(getClient, t)),
-			toolsets.NewServerTool(GetPullRequestComments(getClient, t)),
-			toolsets.NewServerTool(GetPullRequestReviews(getClient, t)),
-			toolsets.NewServerTool(GetPullRequestDiff(getClient, t)),
+			monitoring.WithMonitoring(toolsets.NewServerTool(GetPullRequest(getClient, t)), fetchUserDetails),
+			monitoring.WithMonitoring(toolsets.NewServerTool(ListPullRequests(getClient, t)), fetchUserDetails),
+			monitoring.WithMonitoring(toolsets.NewServerTool(GetPullRequestFiles(getClient, t)), fetchUserDetails),
+			monitoring.WithMonitoring(toolsets.NewServerTool(GetPullRequestStatus(getClient, t)), fetchUserDetails),
+			monitoring.WithMonitoring(toolsets.NewServerTool(GetPullRequestComments(getClient, t)), fetchUserDetails),
+			monitoring.WithMonitoring(toolsets.NewServerTool(GetPullRequestReviews(getClient, t)), fetchUserDetails),
+			monitoring.WithMonitoring(toolsets.NewServerTool(GetPullRequestDiff(getClient, t)), fetchUserDetails),
 		).
 		AddWriteTools(
-			toolsets.NewServerTool(MergePullRequest(getClient, t)),
-			toolsets.NewServerTool(UpdatePullRequestBranch(getClient, t)),
-			toolsets.NewServerTool(CreatePullRequest(getClient, t)),
-			toolsets.NewServerTool(UpdatePullRequest(getClient, t)),
-			toolsets.NewServerTool(RequestCopilotReview(getClient, t)),
+			monitoring.WithMonitoring(toolsets.NewServerTool(MergePullRequest(getClient, t)), fetchUserDetails),
+			monitoring.WithMonitoring(toolsets.NewServerTool(UpdatePullRequestBranch(getClient, t)), fetchUserDetails),
+			monitoring.WithMonitoring(toolsets.NewServerTool(CreatePullRequest(getClient, t)), fetchUserDetails),
+			monitoring.WithMonitoring(toolsets.NewServerTool(UpdatePullRequest(getClient, t)), fetchUserDetails),
+			monitoring.WithMonitoring(toolsets.NewServerTool(RequestCopilotReview(getClient, t)), fetchUserDetails),
 
 			// Reviews
-			toolsets.NewServerTool(CreateAndSubmitPullRequestReview(getGQLClient, t)),
-			toolsets.NewServerTool(CreatePendingPullRequestReview(getGQLClient, t)),
-			toolsets.NewServerTool(AddPullRequestReviewCommentToPendingReview(getGQLClient, t)),
-			toolsets.NewServerTool(SubmitPendingPullRequestReview(getGQLClient, t)),
-			toolsets.NewServerTool(DeletePendingPullRequestReview(getGQLClient, t)),
+			monitoring.WithMonitoring(toolsets.NewServerTool(CreateAndSubmitPullRequestReview(getGQLClient, t)), fetchUserDetails),
+			monitoring.WithMonitoring(toolsets.NewServerTool(CreatePendingPullRequestReview(getGQLClient, t)), fetchUserDetails),
+			monitoring.WithMonitoring(toolsets.NewServerTool(AddPullRequestReviewCommentToPendingReview(getGQLClient, t)), fetchUserDetails),
+			monitoring.WithMonitoring(toolsets.NewServerTool(SubmitPendingPullRequestReview(getGQLClient, t)), fetchUserDetails),
+			monitoring.WithMonitoring(toolsets.NewServerTool(DeletePendingPullRequestReview(getGQLClient, t)), fetchUserDetails),
 		)
 	codeSecurity := toolsets.NewToolset("code_security", "Code security related tools, such as GitHub Code Scanning").
 		AddReadTools(
-			toolsets.NewServerTool(GetCodeScanningAlert(getClient, t)),
-			toolsets.NewServerTool(ListCodeScanningAlerts(getClient, t)),
+			monitoring.WithMonitoring(toolsets.NewServerTool(GetCodeScanningAlert(getClient, t)), fetchUserDetails),
+			monitoring.WithMonitoring(toolsets.NewServerTool(ListCodeScanningAlerts(getClient, t)), fetchUserDetails),
 		)
 	secretProtection := toolsets.NewToolset("secret_protection", "Secret protection related tools, such as GitHub Secret Scanning").
 		AddReadTools(
-			toolsets.NewServerTool(GetSecretScanningAlert(getClient, t)),
-			toolsets.NewServerTool(ListSecretScanningAlerts(getClient, t)),
+			monitoring.WithMonitoring(toolsets.NewServerTool(GetSecretScanningAlert(getClient, t)), fetchUserDetails),
+			monitoring.WithMonitoring(toolsets.NewServerTool(ListSecretScanningAlerts(getClient, t)), fetchUserDetails),
 		)
 
 	notifications := toolsets.NewToolset("notifications", "GitHub Notifications related tools").
 		AddReadTools(
-			toolsets.NewServerTool(ListNotifications(getClient, t)),
-			toolsets.NewServerTool(GetNotificationDetails(getClient, t)),
+			monitoring.WithMonitoring(toolsets.NewServerTool(ListNotifications(getClient, t)), fetchUserDetails),
+			monitoring.WithMonitoring(toolsets.NewServerTool(GetNotificationDetails(getClient, t)), fetchUserDetails),
 		).
 		AddWriteTools(
-			toolsets.NewServerTool(DismissNotification(getClient, t)),
-			toolsets.NewServerTool(MarkAllNotificationsRead(getClient, t)),
-			toolsets.NewServerTool(ManageNotificationSubscription(getClient, t)),
-			toolsets.NewServerTool(ManageRepositoryNotificationSubscription(getClient, t)),
+			monitoring.WithMonitoring(toolsets.NewServerTool(DismissNotification(getClient, t)), fetchUserDetails),
+			monitoring.WithMonitoring(toolsets.NewServerTool(MarkAllNotificationsRead(getClient, t)), fetchUserDetails),
+			monitoring.WithMonitoring(toolsets.NewServerTool(ManageNotificationSubscription(getClient, t)), fetchUserDetails),
+			monitoring.WithMonitoring(toolsets.NewServerTool(ManageRepositoryNotificationSubscription(getClient, t)), fetchUserDetails),
 		)
 
 	actions := toolsets.NewToolset("actions", "GitHub Actions workflows and CI/CD operations").
 		AddReadTools(
-			toolsets.NewServerTool(ListWorkflows(getClient, t)),
-			toolsets.NewServerTool(ListWorkflowRuns(getClient, t)),
-			toolsets.NewServerTool(GetWorkflowRun(getClient, t)),
-			toolsets.NewServerTool(GetWorkflowRunLogs(getClient, t)),
-			toolsets.NewServerTool(ListWorkflowJobs(getClient, t)),
-			toolsets.NewServerTool(GetJobLogs(getClient, t)),
-			toolsets.NewServerTool(ListWorkflowRunArtifacts(getClient, t)),
-			toolsets.NewServerTool(DownloadWorkflowRunArtifact(getClient, t)),
-			toolsets.NewServerTool(GetWorkflowRunUsage(getClient, t)),
+			monitoring.WithMonitoring(toolsets.NewServerTool(ListWorkflows(getClient, t)), fetchUserDetails),
+			monitoring.WithMonitoring(toolsets.NewServerTool(ListWorkflowRuns(getClient, t)), fetchUserDetails),
+			monitoring.WithMonitoring(toolsets.NewServerTool(GetWorkflowRun(getClient, t)), fetchUserDetails),
+			monitoring.WithMonitoring(toolsets.NewServerTool(GetWorkflowRunLogs(getClient, t)), fetchUserDetails),
+			monitoring.WithMonitoring(toolsets.NewServerTool(ListWorkflowJobs(getClient, t)), fetchUserDetails),
+			monitoring.WithMonitoring(toolsets.NewServerTool(GetJobLogs(getClient, t)), fetchUserDetails),
+			monitoring.WithMonitoring(toolsets.NewServerTool(ListWorkflowRunArtifacts(getClient, t)), fetchUserDetails),
+			monitoring.WithMonitoring(toolsets.NewServerTool(DownloadWorkflowRunArtifact(getClient, t)), fetchUserDetails),
+			monitoring.WithMonitoring(toolsets.NewServerTool(GetWorkflowRunUsage(getClient, t)), fetchUserDetails),
 		).
 		AddWriteTools(
-			toolsets.NewServerTool(RunWorkflow(getClient, t)),
-			toolsets.NewServerTool(RerunWorkflowRun(getClient, t)),
-			toolsets.NewServerTool(RerunFailedJobs(getClient, t)),
-			toolsets.NewServerTool(CancelWorkflowRun(getClient, t)),
-			toolsets.NewServerTool(DeleteWorkflowRunLogs(getClient, t)),
+			monitoring.WithMonitoring(toolsets.NewServerTool(RunWorkflow(getClient, t)), fetchUserDetails),
+			monitoring.WithMonitoring(toolsets.NewServerTool(RerunWorkflowRun(getClient, t)), fetchUserDetails),
+			monitoring.WithMonitoring(toolsets.NewServerTool(RerunFailedJobs(getClient, t)), fetchUserDetails),
+			monitoring.WithMonitoring(toolsets.NewServerTool(CancelWorkflowRun(getClient, t)), fetchUserDetails),
+			monitoring.WithMonitoring(toolsets.NewServerTool(DeleteWorkflowRunLogs(getClient, t)), fetchUserDetails),
 		)
 
 	// Keep experiments alive so the system doesn't error out when it's always enabled
@@ -136,7 +145,7 @@ func DefaultToolsetGroup(readOnly bool, getClient GetClientFn, getGQLClient GetG
 
 	contextTools := toolsets.NewToolset("context", "Tools that provide context about the current user and GitHub context you are operating in").
 		AddReadTools(
-			toolsets.NewServerTool(GetMe(getClient, t)),
+			monitoring.WithMonitoring(toolsets.NewServerTool(GetMe(getClient, t)), fetchUserDetails),
 		)
 
 	// Add toolsets to the group
@@ -160,9 +169,9 @@ func InitDynamicToolset(s *server.MCPServer, tsg *toolsets.ToolsetGroup, t trans
 	// Need to add the dynamic toolset last so it can be used to enable other toolsets
 	dynamicToolSelection := toolsets.NewToolset("dynamic", "Discover GitHub MCP tools that can help achieve tasks by enabling additional sets of tools, you can control the enablement of any toolset to access its tools when this toolset is enabled.").
 		AddReadTools(
-			toolsets.NewServerTool(ListAvailableToolsets(tsg, t)),
-			toolsets.NewServerTool(GetToolsetsTools(tsg, t)),
-			toolsets.NewServerTool(EnableToolset(s, tsg, t)),
+			monitoring.WithMonitoring(toolsets.NewServerTool(ListAvailableToolsets(tsg, t)), nil),
+			monitoring.WithMonitoring(toolsets.NewServerTool(GetToolsetsTools(tsg, t)), nil),
+			monitoring.WithMonitoring(toolsets.NewServerTool(EnableToolset(s, tsg, t)), nil),
 		)
 
 	dynamicToolSelection.Enabled = true
